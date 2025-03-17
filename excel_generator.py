@@ -65,7 +65,7 @@ def generate_grade_file(config: ClassConfig):
             large_formula = ",".join(large_parts)
             
             # Calculate average of top percentages
-            ws[f"B{formula_row}"] = f"=AVERAGE(LARGE(B{start_row+1}:B{start_row+category.total_items},{{{large_formula}}}))"
+            ws[f"B{formula_row}"] = f"=AVERAGE(ARRAYFORMULA(LARGE(B{start_row+1}:B{start_row+category.total_items},{{{large_formula}}})))"
         else:
             # If best_of equals total_items, just average all
             ws[f"B{formula_row}"] = f"=AVERAGE(B{start_row+1}:B{start_row+category.total_items})"
