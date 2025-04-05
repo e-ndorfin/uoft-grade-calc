@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
+import openpyxl
+import os
+import openpyxl
 from config import ClassConfig, CategoryConfig
 from excel_generator import generate_grade_file
 
@@ -98,6 +101,7 @@ class GradeCalculatorApp(tk.Tk):
         
         ttk.Button(button_frame, text="Generate Excel", command=self.generate_excel).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Load MAT137 Template", command=self.load_mat137).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Load Existing Excel", command=self.load_existing_excel).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Exit", command=self.quit).pack(side=tk.RIGHT, padx=5)
         
         # Status bar
@@ -105,6 +109,7 @@ class GradeCalculatorApp(tk.Tk):
         ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W).pack(side=tk.BOTTOM, fill=tk.X)
         
         self.category_frames = []
+        self.existing_wb_path = None
     
     def add_category(self, category=None):
         frame = CategoryFrame(self.scrollable_frame, category=category)
@@ -181,32 +186,50 @@ class GradeCalculatorApp(tk.Tk):
         
         return ClassConfig(class_name=class_name, categories=categories)
     
+    def load_existing_excel(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Excel files", "*.xlsx")],
+            title="Select existing grade calculator file"
+        )
+        if file_path:
+            self.existing_wb_path = file_path
+            self.status_var.set(f"Loaded existing file: {file_path}")
+    
     def generate_excel(self):
         config = self.validate_config()
         if not config:
             return
             
         try:
-            # Ask for save location
+            if self.existing_wb_path:
+                # Load existing workbook
+                wb = openpyxl.load_workbook(self.existing_wb_path)
+                wb = generate_grade_file(config, wb)
+                default_name = os.path.basename(self.existing_wb_path)
+            else:
+                # Create new workbook
+                wb = generate_grade_file(config)
+                default_name = f"{config.class_name}_Grade_Calculator.xlsx"
+
+            # Get save location
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".xlsx",
                 filetypes=[("Excel files", "*.xlsx")],
-                initialfile=f"{config.class_name}_Grade_Calculator.xlsx"
+                initialfile=default_name
             )
             
             if not file_path:  # User cancelled
                 return
                 
-            # Generate the file
-            generate_grade_file(config)
+            # Save the workbook
+            wb.save(file_path)
             
-            # Move the file if needed
-            default_path = f"{config.class_name}_Grade_Calculator.xlsx"
-            if os.path.exists(default_path) and default_path != file_path:
-                os.rename(default_path, file_path)
+            # Clear existing workbook reference after save
+            self.existing_wb_path = None
                 
-            self.status_var.set(f"Excel file created: {file_path}")
-            messagebox.showinfo("Success", f"Grade calculator created successfully as:\n{file_path}")
+            self.status_var.set(f"Excel file saved: {file_path}")
+            messagebox.showinfo("Success", f"Grade calculator saved successfully as:\n{file_path}")
+            os.system(f"open {file_path}")
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create Excel file: {str(e)}")
